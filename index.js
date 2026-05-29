@@ -5,7 +5,7 @@ const CHANNEL_NAME = 'Noeliv_';
 
 const app = express();
 
-// 💾 простое хранилище (в RAM)
+// 💾 хранилище в памяти
 const store = {};
 const activeUsers = new Set();
 
@@ -19,16 +19,15 @@ client.connect();
 client.on('message', (channel, tags, message, self) => {
     if (self) return;
 
+    if (!tags || !tags.username) return;
+
     activeUsers.add(tags.username.toLowerCase());
 });
 
-// ===== начисление времени =====
+// ===== начисление watchtime =====
 setInterval(() => {
     activeUsers.forEach(user => {
-        if (!store[user]) {
-            store[user] = 0;
-        }
-
+        if (!store[user]) store[user] = 0;
         store[user] += 1; // 1 минута
     });
 
@@ -43,20 +42,22 @@ function formatTime(minutes) {
 }
 
 // ===== API =====
+app.get('/', (req, res) => {
+    res.send('Watchtime API is running');
+});
+
 app.get('/watchtime/:user', (req, res) => {
     const user = req.params.user.toLowerCase();
 
     const minutes = store[user] || 0;
 
-    res.send(`${user} был на стриме ${formatTime(minutes)} в этом месяце`);
+    const text = '${user} был на стриме ${formatTime(minutes)} в этом месяце';
+
+    res.setHeader('Content-Type', 'text/plain');
+    res.send(text);
 });
 
-// ===== health check =====
-app.get('/', (req, res) => {
-    res.send('Watchtime API is running');
-});
-
-// ===== render port =====
+// ===== PORT (ВАЖНО для Render) =====
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {

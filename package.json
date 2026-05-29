@@ -1,15 +1,10 @@
 {
   "name": "watchtime-api",
   "version": "1.0.1",
-  "description": "",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "express": "^5.2.1",
     "tmi.js": "^1.8.5"
