@@ -1,14 +1,16 @@
 const tmi = require('tmi.js');
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 
 const CHANNEL_NAME = 'Noeliv_';
 
 const app = express();
 
-const db = new sqlite3.Database('./watchtime.db');
+// ✅ правильное создание базы (better-sqlite3)
+const db = new Database('./watchtime.db');
 
-db.run(`
+// таблица
+db.exec(`
 CREATE TABLE IF NOT EXISTS watchtime (
     user TEXT,
     month TEXT,
@@ -19,7 +21,6 @@ CREATE TABLE IF NOT EXISTS watchtime (
 
 function getCurrentMonth() {
     const now = new Date();
-
     return now.getFullYear() + '-' +
         String(now.getMonth() + 1).padStart(2, '0');
 }
@@ -27,7 +28,6 @@ function getCurrentMonth() {
 function formatTime(minutes) {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-
     return hours + 'ч ' + mins + 'м';
 }
 
@@ -41,24 +41,21 @@ client.connect();
 
 client.on('message', (channel, tags, message, self) => {
     if (self) return;
-
     activeUsers.add(tags.username.toLowerCase());
 });
 
 setInterval(() => {
     const month = getCurrentMonth();
 
+    const stmt = db.prepare(`
+        INSERT INTO watchtime(user, month, minutes)
+        VALUES (?, ?, 1)
+        ON CONFLICT(user, month)
+        DO UPDATE SET minutes = minutes + 1
+    `);
+
     activeUsers.forEach(user => {
-
-        db.run(`
-            INSERT INTO watchtime(user, month, minutes)
-            VALUES (?, ?, 1)
-
-            ON CONFLICT(user, month)
-
-            DO UPDATE SET minutes = minutes + 1
-        `, [user, month]);
-
+        stmt.run(user, month);
     });
 
     activeUsers.clear();
@@ -66,23 +63,18 @@ setInterval(() => {
 }, 60000);
 
 app.get('/watchtime/:user', (req, res) => {
-
     const user = req.params.user.toLowerCase();
     const month = getCurrentMonth();
 
-    db.get(`
+    const row = db.prepare(`
         SELECT minutes
         FROM watchtime
         WHERE user = ? AND month = ?
-    `, [user, month], (err, row) => {
+    `).get(user, month);
 
-        const minutes = row ? row.minutes : 0;
+    const minutes = row ? row.minutes : 0;
 
-        const formatted = formatTime(minutes);
-
-        res.send(`${user} был на стриме ${formatted} в этом месяце`);
-    });
-
+    res.send(`${user} был на стриме ${formatTime(minutes)} в этом месяце`);
 });
 
 const PORT = process.env.PORT || 3000;
