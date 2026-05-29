@@ -5,7 +5,7 @@ const CHANNEL_NAME = 'Noeliv_';
 
 const app = express();
 
-// 💾 хранилище в памяти
+// 💾 память (временное хранение)
 const store = {};
 const activeUsers = new Set();
 
@@ -18,7 +18,6 @@ client.connect();
 
 client.on('message', (channel, tags, message, self) => {
     if (self) return;
-
     if (!tags || !tags.username) return;
 
     activeUsers.add(tags.username.toLowerCase());
@@ -27,7 +26,10 @@ client.on('message', (channel, tags, message, self) => {
 // ===== начисление watchtime =====
 setInterval(() => {
     activeUsers.forEach(user => {
-        if (!store[user]) store[user] = 0;
+        if (!store[user]) {
+            store[user] = 0;
+        }
+
         store[user] += 1; // 1 минута
     });
 
@@ -57,7 +59,7 @@ app.get('/watchtime/:user', (req, res) => {
     res.send(text);
 });
 
-// ===== PORT (ВАЖНО для Render) =====
+// ===== PORT (обязательно для Render) =====
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
